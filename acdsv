@@ -1,0 +1,137 @@
+SQL
+In this weeks lab we are going to have a look at writing some SQL inside a C# application. On
+blackboard is an example solution that sets up the connection to the example SQL-Lite database we
+are going to use. The code is commented and will be explained in the lab, this tutorial is mostly
+concerned with SQL itself.
+SQL.
+In this lab we are going to look at accessing existing data in a database using SQL, we will look at
+altering, adding and deleting next week.
+Example Database.
+The example database provided has two tables :
+robots and jobs
+robots has columns : RobotName, Manufacturer, Model, Location, Status, DatePurchased,
+LastServiced.
+jobs has columns : JobType , robotModel.
+The SELECT statement.
+All SQL searches start with the keyword SELECT (SQL keywords are usually written in uppercase, but this is just convention. When we actually run the code SELECT behaves the same as
+select, Select, SeleCt etc.). The most basic of SELECT statements is the one in the example code to
+begin with :
+SELECT * FROM robots
+SQL normally terminates in a semi-colon but C# will add that later when it send the string out as an
+SQL statement.
+The * after SELECT tells SQL to return all columns and the FROM value of robots tells it that we
+are interested in the robots table. So this command returns all the data in the robots table.
+If we are interested in just some of the columns we can alter the SQL like so :
+SELECT RobotName , Location FROM robots
+Here we have listed RobotName and Location as the two columns we want returned. The columns
+we want are separated using a comma (,).
+The WHERE clause.
+Most of the time we don't want all the information in a table returned (or we might as well use flat
+files). So SQL allows us to do selection based on some criteria. Suppose we want to bring back
+the name and location of all the robots made by Fanuc :SELECT RobotName , Location FROM robots WHERE Manufacturer = 'Fanuc'
+Here the WHERE clause allows us to place restrictions on which rows to return, we only want to
+bring back those rows in the table that have the value Fanuc in the Manufacturer column.
+Two things to note here :
+Fanuc is contained within single quotes, normally if we were writing SQL directly in the DBMS we
+would place string within double quotes, the reason we use single quotes here is that the entire SQL
+command is being constructed in C# as a string so trying to use double quotes here would cause
+problems.
+We do not have to include the Manufacturer value in the information we return in order to check its
+value. Although we are only bringing back robots with a manufacturing value of Fanuc we only get
+the values of RobotName and Location from the database, we could return Manufacturer and
+display it (we often do to check everything worked Ok) but we don't have to.
+The check in the WHERE clause does not have to be an equals we can also use the following :
+<> (not equal to)
+> (greater than)
+< (less than)
+We can also use the keyword like.
+Like allows us to look for patterns so :
+SELECT * FROM robots WHERE Manufacturer LIKE 'Fanuc'
+This would bring back all attributes of any row where the manufacturer name was Fanuc. How
+does this help though ? Isn't this exactly the same as our previous example where we used an = ?
+Not quite, if we use = then we will only get back rows that exactly match “Fanuc” we would not get
+back rows that contained “Fanuc UK” or “Fanuc Robotics” Like would return those as well.
+However as written it would not return “FanucRobots” because it is specifically looking for a word
+Fanuc with no characters before or after it. If we wish to do this we have to use the % symbol :
+%Fanuc would match RobotFanuc , UKFanuc , etc...
+Fanuc% would match FanucUK , FanucRobot, etc...
+%Fanuc% would match UKFanucRobotics , etc...
+We can also check for the absence of a pattern by using the NOT operator, so if we wanted to find
+all the robots not made by Fanuc we could do so like this :
+SELECT * FROM robots WHERE Manufacturer NOT LIKE 'Fanuc'
+Case sensitivity.
+Normally searches in SQL are case sensitive (there are exceptions, for reasons best know to
+Microsoft, Access is case insensitive) in Where clauses. So usually :
+SELECT * FROM robots WHERE Manufacturer = 'FANUC'would not find rows with the value of “Fanuc” .
+So how do we solve this problem?
+SQL has the keywords UPPER and LOWER these convert all characters to upper or lower-case for
+the purpose of searching. So if we wanted to make sure that we found all versions of “Fanuc”
+including “fanuc”, “FANUC” etc. in standard ANSI SQL we would do the following :
+SELECT * FROM robots WHERE lower(Manufacturer) = 'fanuc'
+This would convert all the characters in the Manufacturer attribute to lower case before checking
+the values, notice it doesn't actual change the case when the values are printed so the returned
+results would still be “Fanuc”, “fanuc”, “FANUC” etc. it's just that the search would consider them
+all to be the same. We can replace lower with UPPER and search for 'FANUC' and get the same
+effect it is just a matter of preference.
+Mulitple WHERE conditions.
+Supposing we have more than one where condition we want to satisfy, we can do this with the usual
+logical operators AND and OR. So assume we want the name of every robot that is not in use
+(status = free) that we bought before the 1st January 2013. We can do this with the following (note
+this would all be one line in code but I've placed it on separate lines to make it easier to read) :
+SELECT robotName FROM robots
+WHERE (status = 'Free') AND (DatePurchased < ‘2013-01-01’)
+The brackets aren't necessary but they make it easier to see what is going on.
+Dates
+The last example used a date, how to handle dates can vary between DBMSs but the standard
+format is YYYY-MM-DD where.
+YYYY is the year eg. 2014
+MM is the month eg 07
+DD is the day eg 16
+We can also specify time in the form of HH:MI:SS where
+HH – 24 Hour clock eg. 17 (for 5 pm)
+MI – Minutes eg. 16
+SS – Seconds eg . 45
+So in a date / time field 5.30 pm on December 25th 2014 would look like :
+'2014-12-25 17:30:00'
+SQLite does not have a storage class set aside for storing dates and/or times. Instead, the built-in
+Date And Time Functions of SQLite are capable of storing dates and times as TEXT, REAL, or
+INTEGER values:
+ TEXT as ISO8601 strings ("YYYY-MM-DD HH:MM:SS.SSS"). REAL as Julian day numbers, the number of days since noon in Greenwich on November
+24, 4714 B.C. according to the proleptic Gregorian calendar.
+ INTEGER as Unix Time, the number of seconds since 1970-01-01 00:00:00 UTC.
+We will be storing dates as Text.
+Multiple Tables.
+Our database has more than one table so how do we link tables together for queries ?
+To join two tables together they must share an attribute that is the same, in our case robotModel in
+the job table is the same as model in the robots table, this allows us to join them together like so :
+SELECT * FROM robots , jobs WHERE robots.model = jobs.robotModel
+There is no limit to the number of tables we can join together this way provided that each table
+shares an attribute with another table. So if we had a third table called building that listed the
+people in each room and we wanted to include that it would look like this (note this won't work if
+you try it as there isn't a building table in the database) :
+SELECT * FROM robots , jobs , building
+WHERE robots.model = jobs.robotModel AND robots.Location = building.room
+ORDER BY Clause
+Remember that row order doesn't matter in an RDBMS but sometimes it does matter when you are
+returning results. We can place things in order using the ORDER BY clause :
+SELECT robotName , Model , status FROM robots ORDER BY status
+Here the rows are returned in status order, all the free robots are listed first followed by all the In
+Use robots (this is because F comes before I in the alphabet), notice that the robots aren't in any
+other particular order. Supposed we want all the Robots ordered first by status and then by name :
+SELECT robotName, Model, status FROM robots ORDER BY status , robotName
+By default the list will be in ascending order if we want the list in descending order we can specify
+it like this :
+SELECT robotName, Model, status FROM robots ORDER BY status desc , robotName desc
+Notice that we have to label each attribute as desc individually, any that we don't will be listed in
+ascending order (if you want to be really sure of order you can label attributes you want listed in
+ascending order using asc instead of desc).
+Again the attribute we use to order the results on does not have to be included in the select part, we
+just have done here to see what has happened.Exercises :
+1) Alter the program to return the Name and Location of all robots that are currently in use.
+2) Alter the program to return the Name, Manufacturer and Model of all robots that have not been
+serviced in the last six months, ordered last service date (oldest first).
+3) Alter the program to return Location and name of every robot capable of doing a drilling job.
+4) Alter the program to return the name and location of every robot that may currently be doing a
+lifting job (either heavy or light lifting).
+5) Alter the program to return the name, location, model and status of all robots from a
+manufacturer specified by a user.
